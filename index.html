@@ -3033,8 +3033,9 @@ if('serviceWorker' in navigator){
       const saved = await dbOp('readonly', s => s.get(KEY)).catch(() => null);
       if (!saved) return;
       
-      const intentaImportar = () => {
-        const inp = document.querySelector('input[type="file"]');
+            const intentaImportar = () => {
+        const impEl = Array.from(document.querySelectorAll('label, button, div, span')).find(el => /importar tot/i.test(el.textContent));
+        const inp = impEl?.querySelector('input[type="file"]') || impEl?.parentElement?.querySelector('input[type="file"]') || document.querySelector('input[type="file"][accept*="json"]');
         if (inp) {
           const dt = new DataTransfer();
           dt.items.add(new File([saved], 'uboat_backup.json', { type: 'application/json' }));
@@ -3046,10 +3047,11 @@ if('serviceWorker' in navigator){
       };
 
       if (!intentaImportar()) {
-        const editBtn = Array.from(document.querySelectorAll('button')).find(b => /edici[óo]|editar/i.test(b.textContent));
+        const editBtn = Array.from(document.querySelectorAll('button')).find(b => /mode lectura|edici[óo]|editar/i.test(b.textContent));
         if (editBtn) editBtn.click();
-        setTimeout(intentaImportar, 500);
+        setTimeout(intentaImportar, 600);
       }
+
     }, 1000);
   });
 })();
