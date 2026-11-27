@@ -3066,17 +3066,18 @@ if('serviceWorker' in navigator){
         return false;
       };
 
-      if (!disparaImport()) {
-        const llapisBtn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.trim() === '✏️');
-        if (llapisBtn) llapisBtn.click();
+            if (!disparaImport()) {
+        const menuBtn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.trim() === '≡');
+        const toggleBtn = menuBtn?.nextElementSibling;
+        if (toggleBtn) toggleBtn.click();
         setTimeout(() => {
           disparaImport();
           setTimeout(() => {
-            const llapisTancar = Array.from(document.querySelectorAll('button')).find(b => b.innerText.trim() === '✏️');
-            if (llapisTancar) llapisTancar.click();
+            if (toggleBtn) toggleBtn.click();
           }, 1200);
         }, 700);
       }
+
     }, 1200);
   });
 })();
