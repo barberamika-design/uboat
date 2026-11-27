@@ -3050,36 +3050,34 @@ if('serviceWorker' in navigator){
   };
 
 
-    window.addEventListener('load', () => {
-    setTimeout(async () => {
-      const saved = await dbOp('readonly', s => s.get(KEY)).catch(() => null);
-      if (!saved) return;
-      dadesARestaurar = saved;
+      setTimeout(async () => {
+    const saved = await dbOp('readonly', s => s.get(KEY)).catch(() => null);
+    if (!saved) return;
+    dadesARestaurar = saved;
 
-      const disparaImport = () => {
-        const impBtn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('IMPORTAR TOT JSON'));
-        if (impBtn) {
-          restaurant = true;
-          impBtn.click();
-          return true;
-        }
-        return false;
-      };
-
-            if (!disparaImport()) {
-        const menuBtn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.trim() === '≡');
-        const toggleBtn = menuBtn?.nextElementSibling;
-        if (toggleBtn) toggleBtn.click();
-        setTimeout(() => {
-          disparaImport();
-          setTimeout(() => {
-            if (toggleBtn) toggleBtn.click();
-          }, 1200);
-        }, 700);
+    const disparaImport = () => {
+      const impBtn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('IMPORTAR TOT JSON'));
+      if (impBtn) {
+        restaurant = true;
+        impBtn.click();
+        return true;
       }
+      return false;
+    };
 
-    }, 1200);
-  });
+    if (!disparaImport()) {
+      const btns = Array.from(document.querySelectorAll('button'));
+      const idxMenu = btns.findIndex(b => b.innerText.trim() === '≡');
+      const toggleBtn = idxMenu !== -1 ? btns[idxMenu + 1] : null;
+      if (toggleBtn) toggleBtn.click();
+      setTimeout(() => {
+        disparaImport();
+        setTimeout(() => {
+          if (toggleBtn) toggleBtn.click();
+        }, 1200);
+      }, 700);
+    }
+  }, 1500);
 })();
 
 
