@@ -3028,7 +3028,7 @@ if('serviceWorker' in navigator){
   }).observe(document.body, { childList: true, subtree: true });
 
   // Restaura automàticament en obrir l'app
-    let restaurant = false, dadesARestaurar = null;
+      let restaurant = false, dadesARestaurar = null;
   const origCreateEl = document.createElement.bind(document);
   document.createElement = function(tag) {
     const el = origCreateEl(tag);
@@ -3037,12 +3037,18 @@ if('serviceWorker' in navigator){
         restaurant = false;
         const dt = new DataTransfer();
         dt.items.add(new File([dadesARestaurar], 'uboat_backup.json', { type: 'application/json' }));
-        Object.defineProperty(el, 'files', { value: dt.files });
-        setTimeout(() => el.dispatchEvent(new Event('change', { bubbles: true })), 50);
+        Object.defineProperty(el, 'files', { value: dt.files, configurable: true });
+        const ev = new Event('change', { bubbles: true });
+        Object.defineProperty(ev, 'target', { value: el, enumerable: true });
+        setTimeout(() => {
+          if (typeof el.onchange === 'function') el.onchange(ev);
+          el.dispatchEvent(ev);
+        }, 100);
       };
     }
     return el;
   };
+
 
     window.addEventListener('load', () => {
     setTimeout(async () => {
