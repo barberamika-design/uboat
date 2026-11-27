@@ -3050,8 +3050,9 @@ if('serviceWorker' in navigator){
       if (!saved) return;
       dadesARestaurar = saved;
 
-      const disparaImport = () => {
-        const impBtn = Array.from(document.querySelectorAll('button, label, div, span')).find(el => el.children.length === 0 && /importar tot/i.test(el.textContent));
+            const disparaImport = () => {
+        const candidats = Array.from(document.querySelectorAll('button, label, div, span')).filter(el => /importar tot/i.test(el.textContent));
+        const impBtn = candidats[candidats.length - 1];
         if (impBtn) {
           restaurant = true;
           impBtn.click();
@@ -3061,9 +3062,12 @@ if('serviceWorker' in navigator){
       };
 
       if (!disparaImport()) {
-        const editBtn = Array.from(document.querySelectorAll('button, div, span')).find(b => b.children.length === 0 && /mode lectura|edici[óo]|editar/i.test(b.textContent));
+        const editCandidats = Array.from(document.querySelectorAll('button, div, span')).filter(b => /mode lectura|edici[óo]|editar/i.test(b.textContent));
+        const editBtn = editCandidats[editCandidats.length - 1];
         if (editBtn) editBtn.click();
-        setTimeout(disparaImport, 600);
+        setTimeout(disparaImport, 800);
+      }
+
       }
     }, 1000);
   });
