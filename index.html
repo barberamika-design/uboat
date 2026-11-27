@@ -3044,15 +3044,14 @@ if('serviceWorker' in navigator){
     return el;
   };
 
-  window.addEventListener('load', () => {
+    window.addEventListener('load', () => {
     setTimeout(async () => {
       const saved = await dbOp('readonly', s => s.get(KEY)).catch(() => null);
       if (!saved) return;
       dadesARestaurar = saved;
 
-            const disparaImport = () => {
-        const candidats = Array.from(document.querySelectorAll('button, label, div, span')).filter(el => /importar tot/i.test(el.textContent));
-        const impBtn = candidats[candidats.length - 1];
+      const disparaImport = () => {
+        const impBtn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('IMPORTAR TOT JSON'));
         if (impBtn) {
           restaurant = true;
           impBtn.click();
@@ -3062,16 +3061,20 @@ if('serviceWorker' in navigator){
       };
 
       if (!disparaImport()) {
-        const editCandidats = Array.from(document.querySelectorAll('button, div, span')).filter(b => /mode lectura|edici[óo]|editar/i.test(b.textContent));
-        const editBtn = editCandidats[editCandidats.length - 1];
-        if (editBtn) editBtn.click();
-        setTimeout(disparaImport, 800);
+        const llapisBtn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.trim() === '✏️');
+        if (llapisBtn) llapisBtn.click();
+        setTimeout(() => {
+          disparaImport();
+          setTimeout(() => {
+            const llapisTancar = Array.from(document.querySelectorAll('button')).find(b => b.innerText.trim() === '✏️');
+            if (llapisTancar) llapisTancar.click();
+          }, 1200);
+        }, 700);
       }
-
-      }
-    }, 1000);
+    }, 1200);
   });
 })();
+
 
 
 
