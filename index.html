@@ -3011,7 +3011,8 @@ if('serviceWorker' in navigator){
   document.body.appendChild(btn);
 
   btn.onclick = () => {
-    const expBtn = Array.from(document.querySelectorAll('button, label, div')).find(el => el.textContent.trim() === 'EXPORTAR TOT');
+    const expBtn = Array.from(document.querySelectorAll('button, label, a, div')).find(el => el.children.length === 0 && /exportar tot/i.test(el.textContent));
+
     if (expBtn) {
       desant = true;
       expBtn.click();

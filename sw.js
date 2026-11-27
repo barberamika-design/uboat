@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'uboat-v7-final-v4';
+const CACHE_NAME = 'uboat-v7-final-v5';
 const URLS_TO_CACHE = [
   './',
   './index.html',
