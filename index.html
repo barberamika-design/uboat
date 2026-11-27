@@ -2973,8 +2973,8 @@ if('serviceWorker' in navigator){
 </script>
 <script>
 (function() {
-  const DB = 'UboatDB', ST = 'estat', KEY = 'backup';
-  let desant = false;
+  const DB = 'UboatDB_v2', ST = 'estat', KEY = 'backup';
+  let desant = false, dadesPendents = null;
 
   function dbOp(mode, fn) {
     return new Promise((res, rej) => {
@@ -2990,51 +2990,69 @@ if('serviceWorker' in navigator){
     });
   }
 
-  const origClick = HTMLAnchorElement.prototype.click;
-  HTMLAnchorElement.prototype.click = function() {
-    if (desant && this.href && (this.href.startsWith('blob:') || this.href.startsWith('data:'))) {
+  // Intercepta qualsevol descàrrega de JSON de React
+  const origCreateObj = URL.createObjectURL;
+  URL.createObjectURL = function(blob) {
+    if (desant && blob instanceof Blob) {
       desant = false;
-      fetch(this.href).then(r => r.text()).then(txt => dbOp('readwrite', s => s.put(txt, KEY))).then(() => {
-        btn.textContent = '✅ CANVIS GUARDATS!';
+      blob.text().then(txt => dbOp('readwrite', s => s.put(txt, KEY))).then(() => {
+        btn.textContent = '✅ GUARDAT CORRECTAMENT!';
         setTimeout(() => btn.textContent = '💾 GUARDAR CANVIS AL PC', 2500);
       });
-      return;
+      return 'javascript:void(0)';
     }
-    return origClick.apply(this, arguments);
+    return origCreateObj.apply(this, arguments);
   };
+
+  // Crea el botó flotant permanent en mode edició
   const btn = document.createElement('button');
   btn.textContent = '💾 GUARDAR CANVIS AL PC';
-  btn.style.cssText = 'display:none;position:fixed;bottom:20px;right:20px;z-index:99999;background:#c9a86a;color:#0a1628;border:2px solid #0a1628;padding:12px 20px;border-radius:10px;font-weight:bold;cursor:pointer;box-shadow:0 4px 15px rgba(0,0,0,0.5);';
+  btn.style.cssText = 'display:none;position:fixed;bottom:20px;right:20px;z-index:99999;background:#c9a86a;color:#0a1628;border:2px solid #0a1628;padding:12px 20px;border-radius:10px;font-weight:bold;cursor:pointer;box-shadow:0 4px 15px rgba(0,0,0,0.6);';
   document.body.appendChild(btn);
 
   btn.onclick = () => {
-    const expBtn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('EXPORTAR TOT'));
-    if (expBtn) { desant = true; expBtn.click(); }
+    const expBtn = Array.from(document.querySelectorAll('button, label, div')).find(el => el.textContent.trim() === 'EXPORTAR TOT');
+    if (expBtn) {
+      desant = true;
+      expBtn.click();
+    } else {
+      alert('Ves a la pestanya on surt el botó "EXPORTAR TOT" abans de guardar.');
+    }
   };
 
+  // Mostra el botó sempre que l'app estigui en mode edició
   new MutationObserver(() => {
-    btn.style.display = document.body.innerText.includes('EXPORTAR TOT') ? 'block' : 'none';
+    const enEdicio = document.body.innerText.includes('EXPORTAR TOT') || document.body.innerText.includes('EDITABLE');
+    btn.style.display = enEdicio ? 'block' : 'none';
   }).observe(document.body, { childList: true, subtree: true });
 
+  // Restaura automàticament en obrir l'app
   window.addEventListener('load', () => {
     setTimeout(async () => {
       const saved = await dbOp('readonly', s => s.get(KEY)).catch(() => null);
       if (!saved) return;
-      const editBtn = Array.from(document.querySelectorAll('button')).find(b => /edici[óo]|editar/i.test(b.innerText));
-      if (editBtn && !document.body.innerText.includes('IMPORTAR TOT JSON')) editBtn.click();
-      setTimeout(() => {
-        const impBtn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('IMPORTAR TOT JSON'));
-        const inp = impBtn?.parentElement?.querySelector('input[type="file"]') || document.querySelector('input[type="file"][accept*="json"]');
+      
+      const intentaImportar = () => {
+        const inp = document.querySelector('input[type="file"]');
         if (inp) {
           const dt = new DataTransfer();
-          dt.items.add(new File([saved], 'backup.json', { type: 'application/json' }));
+          dt.items.add(new File([saved], 'uboat_backup.json', { type: 'application/json' }));
           inp.files = dt.files;
           inp.dispatchEvent(new Event('change', { bubbles: true }));
+          return true;
         }
-      }, 400);
-    }, 800);
+        return false;
+      };
+
+      if (!intentaImportar()) {
+        const editBtn = Array.from(document.querySelectorAll('button')).find(b => /edici[óo]|editar/i.test(b.textContent));
+        if (editBtn) editBtn.click();
+        setTimeout(intentaImportar, 500);
+      }
+    }, 1000);
   });
 })();
+
 
 </script>
 </body>
