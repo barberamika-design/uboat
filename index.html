@@ -3028,33 +3028,47 @@ if('serviceWorker' in navigator){
   }).observe(document.body, { childList: true, subtree: true });
 
   // Restaura automàticament en obrir l'app
+    let restaurant = false, dadesARestaurar = null;
+  const origCreateEl = document.createElement.bind(document);
+  document.createElement = function(tag) {
+    const el = origCreateEl(tag);
+    if (restaurant && tag.toLowerCase() === 'input') {
+      el.click = function() {
+        restaurant = false;
+        const dt = new DataTransfer();
+        dt.items.add(new File([dadesARestaurar], 'uboat_backup.json', { type: 'application/json' }));
+        Object.defineProperty(el, 'files', { value: dt.files });
+        setTimeout(() => el.dispatchEvent(new Event('change', { bubbles: true })), 50);
+      };
+    }
+    return el;
+  };
+
   window.addEventListener('load', () => {
     setTimeout(async () => {
       const saved = await dbOp('readonly', s => s.get(KEY)).catch(() => null);
       if (!saved) return;
-      
-            const intentaImportar = () => {
-        const impEl = Array.from(document.querySelectorAll('label, button, div, span')).find(el => /importar tot/i.test(el.textContent));
-        const inp = impEl?.querySelector('input[type="file"]') || impEl?.parentElement?.querySelector('input[type="file"]') || document.querySelector('input[type="file"][accept*="json"]');
-        if (inp) {
-          const dt = new DataTransfer();
-          dt.items.add(new File([saved], 'uboat_backup.json', { type: 'application/json' }));
-          inp.files = dt.files;
-          inp.dispatchEvent(new Event('change', { bubbles: true }));
+      dadesARestaurar = saved;
+
+      const disparaImport = () => {
+        const impBtn = Array.from(document.querySelectorAll('button, label, div, span')).find(el => el.children.length === 0 && /importar tot/i.test(el.textContent));
+        if (impBtn) {
+          restaurant = true;
+          impBtn.click();
           return true;
         }
         return false;
       };
 
-      if (!intentaImportar()) {
-        const editBtn = Array.from(document.querySelectorAll('button')).find(b => /mode lectura|edici[óo]|editar/i.test(b.textContent));
+      if (!disparaImport()) {
+        const editBtn = Array.from(document.querySelectorAll('button, div, span')).find(b => b.children.length === 0 && /mode lectura|edici[óo]|editar/i.test(b.textContent));
         if (editBtn) editBtn.click();
-        setTimeout(intentaImportar, 600);
+        setTimeout(disparaImport, 600);
       }
-
     }, 1000);
   });
 })();
+
 
 
 </script>
