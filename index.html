@@ -2970,11 +2970,10 @@ if('serviceWorker' in navigator){
     }).catch(e=>console.log('SW fail', e));
   });
 }
-</script>
 <script>
 (function() {
-  const DB = 'UboatDB_v2', ST = 'estat', KEY = 'backup';
-  let desant = false, dadesPendents = null;
+  const DB = 'UboatDB_v3', ST = 'estat', KEY = 'backup';
+  let desant = false, restaurant = false, dades = null;
 
   function dbOp(mode, fn) {
     return new Promise((res, rej) => {
@@ -2990,99 +2989,64 @@ if('serviceWorker' in navigator){
     });
   }
 
-  // Intercepta qualsevol descàrrega de JSON de React
   const origCreateObj = URL.createObjectURL;
   URL.createObjectURL = function(blob) {
     if (desant && blob instanceof Blob) {
       desant = false;
       blob.text().then(txt => dbOp('readwrite', s => s.put(txt, KEY))).then(() => {
-        btn.textContent = '✅ GUARDAT CORRECTAMENT!';
-        setTimeout(() => btn.textContent = '💾 GUARDAR CANVIS AL PC', 2500);
+        btnSave.textContent = '✅ GUARDAT AL PC!';
+        btnLoad.style.display = 'block';
+        setTimeout(() => btnSave.textContent = '💾 GUARDAR CANVIS', 2500);
       });
       return 'javascript:void(0)';
     }
     return origCreateObj.apply(this, arguments);
   };
 
-  // Crea el botó flotant permanent en mode edició
-  const btn = document.createElement('button');
-  btn.textContent = '💾 GUARDAR CANVIS AL PC';
-  btn.style.cssText = 'display:none;position:fixed;bottom:20px;right:20px;z-index:99999;background:#c9a86a;color:#0a1628;border:2px solid #0a1628;padding:12px 20px;border-radius:10px;font-weight:bold;cursor:pointer;box-shadow:0 4px 15px rgba(0,0,0,0.6);';
-  document.body.appendChild(btn);
-
-  btn.onclick = () => {
-    const expBtn = Array.from(document.querySelectorAll('button, label, a, div')).find(el => el.children.length === 0 && /exportar tot/i.test(el.textContent));
-
-    if (expBtn) {
-      desant = true;
-      expBtn.click();
-    } else {
-      alert('Ves a la pestanya on surt el botó "EXPORTAR TOT" abans de guardar.');
+  const origRead = FileReader.prototype.readAsText;
+  FileReader.prototype.readAsText = function() {
+    if (restaurant && dades) {
+      restaurant = false;
+      Object.defineProperty(this, 'result', { value: dades });
+      setTimeout(() => { if (typeof this.onload === 'function') this.onload({ target: this }); }, 50);
+      return;
     }
+    return origRead.apply(this, arguments);
+  };
+  const btnSave = document.createElement('button');
+  btnSave.textContent = '💾 GUARDAR CANVIS';
+  btnSave.style.cssText = 'display:none;position:fixed;bottom:20px;right:20px;z-index:99999;background:#c9a86a;color:#0a1628;border:2px solid #0a1628;padding:12px 18px;border-radius:10px;font-weight:bold;cursor:pointer;box-shadow:0 4px 15px rgba(0,0,0,0.6);';
+  document.body.appendChild(btnSave);
+
+  const btnLoad = document.createElement('button');
+  btnLoad.textContent = '🔄 CARREGAR ÚLTIMA SESSIÓ';
+  btnLoad.style.cssText = 'display:none;position:fixed;bottom:20px;left:20px;z-index:99999;background:#0a1628;color:#c9a86a;border:2px solid #c9a86a;padding:12px 18px;border-radius:10px;font-weight:bold;cursor:pointer;box-shadow:0 4px 15px rgba(0,0,0,0.6);';
+  document.body.appendChild(btnLoad);
+
+  btnSave.onclick = () => {
+    const expBtn = Array.from(document.querySelectorAll('button, label, a, div')).find(el => el.children.length === 0 && /exportar tot/i.test(el.textContent));
+    if (expBtn) { desant = true; expBtn.click(); }
+    else alert('Obre el mode edició abans de guardar.');
   };
 
-  // Mostra el botó sempre que l'app estigui en mode edició
+  btnLoad.onclick = async () => {
+    dades = await dbOp('readonly', s => s.get(KEY)).catch(() => null);
+    if (!dades) return alert('Encara no hi ha cap sessió guardada.');
+    const impBtn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('IMPORTAR TOT JSON'));
+    if (!impBtn) return alert('Prem primer la icona de mode edició a dalt perquè aparegui el botó IMPORTAR TOT JSON.');
+    restaurant = true;
+    impBtn.click();
+    btnLoad.textContent = '✅ SESSIÓ CARREGADA!';
+    setTimeout(() => btnLoad.textContent = '🔄 CARREGAR ÚLTIMA SESSIÓ', 2500);
+  };
+
   new MutationObserver(() => {
-    const enEdicio = document.body.innerText.includes('EXPORTAR TOT') || document.body.innerText.includes('EDITABLE');
-    btn.style.display = enEdicio ? 'block' : 'none';
+    btnSave.style.display = document.body.innerText.includes('EXPORTAR TOT') ? 'block' : 'none';
   }).observe(document.body, { childList: true, subtree: true });
 
-  // Restaura automàticament en obrir l'app
-      let restaurant = false, dadesARestaurar = null;
-  const origCreateEl = document.createElement.bind(document);
-  document.createElement = function(tag) {
-    const el = origCreateEl(tag);
-    if (restaurant && tag.toLowerCase() === 'input') {
-      el.click = function() {
-        restaurant = false;
-        const dt = new DataTransfer();
-        dt.items.add(new File([dadesARestaurar], 'uboat_backup.json', { type: 'application/json' }));
-        Object.defineProperty(el, 'files', { value: dt.files, configurable: true });
-        const ev = new Event('change', { bubbles: true });
-        Object.defineProperty(ev, 'target', { value: el, enumerable: true });
-        setTimeout(() => {
-          if (typeof el.onchange === 'function') el.onchange(ev);
-          el.dispatchEvent(ev);
-        }, 100);
-      };
-    }
-    return el;
-  };
-
-
-      setTimeout(async () => {
-    const saved = await dbOp('readonly', s => s.get(KEY)).catch(() => null);
-    if (!saved) return;
-    dadesARestaurar = saved;
-
-    const disparaImport = () => {
-      const impBtn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('IMPORTAR TOT JSON'));
-      if (impBtn) {
-        restaurant = true;
-        impBtn.click();
-        return true;
-      }
-      return false;
-    };
-
-    if (!disparaImport()) {
-      const btns = Array.from(document.querySelectorAll('button'));
-      const idxMenu = btns.findIndex(b => b.innerText.trim() === '≡');
-      const toggleBtn = idxMenu !== -1 ? btns[idxMenu + 1] : null;
-      if (toggleBtn) toggleBtn.click();
-      setTimeout(() => {
-        disparaImport();
-        setTimeout(() => {
-          if (toggleBtn) toggleBtn.click();
-        }, 1200);
-      }, 700);
-    }
-  }, 1500);
+  dbOp('readonly', s => s.get(KEY)).then(res => { if (res) btnLoad.style.display = 'block'; });
 })();
-
-
-
-
 </script>
+
 </body>
 </html>
