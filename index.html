@@ -2971,12 +2971,10 @@ if('serviceWorker' in navigator){
   });
 }
 </script>
-
 <script>
 (function() {
-
-  const DB = 'UboatDB_v3', ST = 'estat', KEY = 'backup';
-  let desant = false, restaurant = false, dades = null;
+  const DB = 'UboatDB', ST = 'estat', KEY = 'backup';
+  let desant = false;
 
   function dbOp(mode, fn) {
     return new Promise((res, rej) => {
@@ -2992,64 +2990,52 @@ if('serviceWorker' in navigator){
     });
   }
 
-  const origCreateObj = URL.createObjectURL;
-  URL.createObjectURL = function(blob) {
-    if (desant && blob instanceof Blob) {
+  const origClick = HTMLAnchorElement.prototype.click;
+  HTMLAnchorElement.prototype.click = function() {
+    if (desant && this.href && (this.href.startsWith('blob:') || this.href.startsWith('data:'))) {
       desant = false;
-      blob.text().then(txt => dbOp('readwrite', s => s.put(txt, KEY))).then(() => {
-        btnSave.textContent = '✅ GUARDAT AL PC!';
-        btnLoad.style.display = 'block';
-        setTimeout(() => btnSave.textContent = '💾 GUARDAR CANVIS', 2500);
+      fetch(this.href).then(r => r.text()).then(txt => dbOp('readwrite', s => s.put(txt, KEY))).then(() => {
+        btn.textContent = '✅ CANVIS GUARDATS!';
+        setTimeout(() => btn.textContent = '💾 GUARDAR CANVIS AL PC', 2500);
       });
-      return 'javascript:void(0)';
-    }
-    return origCreateObj.apply(this, arguments);
-  };
-
-  const origRead = FileReader.prototype.readAsText;
-  FileReader.prototype.readAsText = function() {
-    if (restaurant && dades) {
-      restaurant = false;
-      Object.defineProperty(this, 'result', { value: dades });
-      setTimeout(() => { if (typeof this.onload === 'function') this.onload({ target: this }); }, 50);
       return;
     }
-    return origRead.apply(this, arguments);
+    return origClick.apply(this, arguments);
   };
-  const btnSave = document.createElement('button');
-  btnSave.textContent = '💾 GUARDAR CANVIS';
-  btnSave.style.cssText = 'display:none;position:fixed;bottom:20px;right:20px;z-index:99999;background:#c9a86a;color:#0a1628;border:2px solid #0a1628;padding:12px 18px;border-radius:10px;font-weight:bold;cursor:pointer;box-shadow:0 4px 15px rgba(0,0,0,0.6);';
-  document.body.appendChild(btnSave);
+  const btn = document.createElement('button');
+  btn.textContent = '💾 GUARDAR CANVIS AL PC';
+  btn.style.cssText = 'display:none;position:fixed;bottom:20px;right:20px;z-index:99999;background:#c9a86a;color:#0a1628;border:2px solid #0a1628;padding:12px 20px;border-radius:10px;font-weight:bold;cursor:pointer;box-shadow:0 4px 15px rgba(0,0,0,0.5);';
+  document.body.appendChild(btn);
 
-  const btnLoad = document.createElement('button');
-  btnLoad.textContent = '🔄 CARREGAR ÚLTIMA SESSIÓ';
-  btnLoad.style.cssText = 'display:none;position:fixed;bottom:20px;left:20px;z-index:99999;background:#0a1628;color:#c9a86a;border:2px solid #c9a86a;padding:12px 18px;border-radius:10px;font-weight:bold;cursor:pointer;box-shadow:0 4px 15px rgba(0,0,0,0.6);';
-  document.body.appendChild(btnLoad);
-
-  btnSave.onclick = () => {
-    const expBtn = Array.from(document.querySelectorAll('button, label, a, div')).find(el => el.children.length === 0 && /exportar tot/i.test(el.textContent));
+  btn.onclick = () => {
+    const expBtn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('EXPORTAR TOT'));
     if (expBtn) { desant = true; expBtn.click(); }
-    else alert('Obre el mode edició abans de guardar.');
-  };
-
-  btnLoad.onclick = async () => {
-    dades = await dbOp('readonly', s => s.get(KEY)).catch(() => null);
-    if (!dades) return alert('Encara no hi ha cap sessió guardada.');
-    const impBtn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('IMPORTAR TOT JSON'));
-    if (!impBtn) return alert('Prem primer la icona de mode edició a dalt perquè aparegui el botó IMPORTAR TOT JSON.');
-    restaurant = true;
-    impBtn.click();
-    btnLoad.textContent = '✅ SESSIÓ CARREGADA!';
-    setTimeout(() => btnLoad.textContent = '🔄 CARREGAR ÚLTIMA SESSIÓ', 2500);
   };
 
   new MutationObserver(() => {
-    btnSave.style.display = document.body.innerText.includes('EXPORTAR TOT') ? 'block' : 'none';
+    btn.style.display = document.body.innerText.includes('EXPORTAR TOT') ? 'block' : 'none';
   }).observe(document.body, { childList: true, subtree: true });
 
-  dbOp('readonly', s => s.get(KEY)).then(res => { if (res) btnLoad.style.display = 'block'; });
+  window.addEventListener('load', () => {
+    setTimeout(async () => {
+      const saved = await dbOp('readonly', s => s.get(KEY)).catch(() => null);
+      if (!saved) return;
+      const editBtn = Array.from(document.querySelectorAll('button')).find(b => /edici[óo]|editar/i.test(b.innerText));
+      if (editBtn && !document.body.innerText.includes('IMPORTAR TOT JSON')) editBtn.click();
+      setTimeout(() => {
+        const impBtn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('IMPORTAR TOT JSON'));
+        const inp = impBtn?.parentElement?.querySelector('input[type="file"]') || document.querySelector('input[type="file"][accept*="json"]');
+        if (inp) {
+          const dt = new DataTransfer();
+          dt.items.add(new File([saved], 'backup.json', { type: 'application/json' }));
+          inp.files = dt.files;
+          inp.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }, 400);
+    }, 800);
+  });
 })();
-</script>
 
+</script>
 </body>
 </html>
